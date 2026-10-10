@@ -35,6 +35,23 @@ sh /Applications/Stats.app/Contents/Resources/Scripts/uninstall.sh
 ### Legacy version
 Legacy version for older systems could be found [here](https://mac-stats.com/downloads).
 
+### Build from source (local use, unsigned)
+Requires Xcode. `make build` is the maintainer's signed and notarized release pipeline, so don't use it for a local build. To build an unsigned Release app, run this from the repository root:
+```bash
+xcodebuild -project Stats.xcodeproj -scheme Stats -configuration Release \
+  -derivedDataPath build \
+  CODE_SIGN_IDENTITY="-" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
+  build
+```
+The app is created at `build/Build/Products/Release/Stats.app`. To install it:
+```bash
+cp -R build/Build/Products/Release/Stats.app /Applications/
+xattr -dr com.apple.quarantine /Applications/Stats.app   # only if Gatekeeper blocks the app
+```
+Limitations of an unsigned build:
+ - Fan control does not work: the SMC helper that sets fan modes and speeds must be installed with a valid code signature. Sensor readings do not use the helper and are not affected.
+ - Wi-Fi 7 detection relies on a raw-value workaround. Some SDKs (e.g. Xcode 26.2) mention `kCWPHYMode11be` in the CoreWLAN header but do not define it in the `CWPHYMode` enum, so `.mode11be` fails to compile in the Net module (`type 'CWPHYMode' has no member 'mode11be'`). `Modules/Net/readers.swift` therefore matches 802.11be by raw value (`7`, the value following 802.11ax) in the `@unknown default` branch instead of using the named case. If the value is wrong, Wi-Fi 7 networks show as "unknown" in the Net module; nothing else is affected. Once your SDK defines `.mode11be`, you can switch back to the named case.
+
 ## Requirements
 Stats is supported on macOS 12 (Monterey) and newer.
 Beta versions of macOS are not supported - only stable releases.
