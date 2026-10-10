@@ -114,6 +114,23 @@ public class Battery: Module {
         return !sources.isEmpty
     }
     
+    // the menu bar is enabled right after the readers start, so the first reading cannot hide it on launch
+    public override func shouldShowMenuBar() -> Bool {
+        let info = IOPSCopyPowerSourcesInfo().takeRetainedValue()
+        let list = IOPSCopyPowerSourcesList(info).takeRetainedValue() as [CFTypeRef]
+        let descriptions = list.compactMap { IOPSGetPowerSourceDescription(info, $0).takeUnretainedValue() as? [String: Any] }
+        guard let battery = descriptions.first(where: { $0[kIOPSTypeKey] as? String == kIOPSInternalBatteryType }) ?? descriptions.first else {
+            return true
+        }
+        let level = Double(battery[kIOPSCurrentCapacityKey] as? Int ?? 0) / 100
+        let isBatteryPowered = battery[kIOPSPowerSourceStateKey] as? String == "Battery Power"
+        return !self.shouldHide(level: level, isBatteryPowered: isBatteryPowered)
+    }
+    
+    private func shouldHide(level: Double, isBatteryPowered: Bool) -> Bool {
+        return Store.shared.bool(key: "\(self.config.name)_hideWhenCharged", defaultValue: false) && !isBatteryPowered && level >= 1
+    }
+    
     private func usageCallback(_ raw: Battery_Usage?) {
         guard let value = raw, self.enabled else { return }
         
@@ -121,8 +138,7 @@ public class Battery: Module {
         self.portalView.loadCallback(value)
         self.notificationsView.usageCallback(value)
         
-        let hide = Store.shared.bool(key: "\(self.config.name)_hideWhenCharged", defaultValue: false) &&
-            !value.isBatteryPowered && value.level >= 1
+        let hide = self.shouldHide(level: value.level, isBatteryPowered: value.isBatteryPowered)
         if hide && self.menuBar.active {
             self.menuBar.disable()
         } else if !hide && !self.menuBar.active {

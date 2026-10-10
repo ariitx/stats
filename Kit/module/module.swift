@@ -179,7 +179,9 @@ open class Module {
     public func mount() {
         guard self.enabled else { return }
         self.startReaders()
-        self.menuBar.enable()
+        if self.shouldShowMenuBar() {
+            self.menuBar.enable()
+        }
     }
     
     // disable module
@@ -210,7 +212,9 @@ open class Module {
         Store.shared.set(key: "\(self.config.name)_state", value: true)
         self.userDefaults?.set(true, forKey: "\(self.config.name)_state")
         self.startReaders()
-        self.menuBar.enable()
+        if self.shouldShowMenuBar() {
+            self.menuBar.enable()
+        }
         self.window?.setState(self.enabled)
         debug("Module enabled", log: self.log)
     }
@@ -241,6 +245,9 @@ open class Module {
     
     // determine if module is available (can be overrided in module)
     open func isAvailable() -> Bool { return true }
+    
+    // determine if the module widgets should be shown in the menu bar when the module starts (can be overrided in module)
+    open func shouldShowMenuBar() -> Bool { return true }
     
     // load the widget and set up. Calls when module init
     private func initWidgets() {
