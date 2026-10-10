@@ -121,6 +121,14 @@ public class Battery: Module {
         self.portalView.loadCallback(value)
         self.notificationsView.usageCallback(value)
         
+        let hide = Store.shared.bool(key: "\(self.config.name)_hideWhenCharged", defaultValue: false) &&
+            !value.isBatteryPowered && value.level >= 1
+        if hide && self.menuBar.active {
+            self.menuBar.disable()
+        } else if !hide && !self.menuBar.active {
+            self.menuBar.enable()
+        }
+        
         self.menuBar.widgets.filter{ $0.isActive }.forEach { (w: SWidget) in
             switch w.item {
             case let widget as Mini:
